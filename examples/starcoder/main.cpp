@@ -137,8 +137,13 @@ bool starcoder_model_load(const std::string & fname, starcoder_model & model, gp
             vocab.token_to_id[word] = i;
             vocab.id_to_token[i] = word;
 
-            // if (i < 10) fprintf(stderr, "%.s: vocab[%d] = '%s'\n", __func__, i, word.c_str());
+            // if (i >= 49150) fprintf(stderr, "%.s: vocab[%d] = '%s'\n", __func__, i, word.c_str());
         }
+
+        vocab.add_special_token("<fim-prefix>");
+        vocab.add_special_token("<fim-middle>");
+        vocab.add_special_token("<fim-suffix>");
+        vocab.add_special_token("<fim-pad>");
     }
 
     // for the big tensors, we have the option to store the data in 16-bit floats or quantized

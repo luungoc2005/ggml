@@ -237,31 +237,58 @@ std::vector<gpt_vocab::id> gpt_tokenize(const gpt_vocab & vocab, const std::stri
 
     // first split the text into words
     {
-        std::string str = text;
         std::string pat = R"('s|'t|'re|'ve|'m|'ll|'d| ?[[:alpha:]]+| ?[[:digit:]]+| ?[^\s[:alpha:][:digit:]]+|\s+(?!\S)|\s+)";
+        std::string special_tokens_subpattern;
+        std::regex re(pat);
+        std::smatch m;
 
         // Generate the subpattern from the special_tokens vector if it's not empty
         if (!vocab.special_tokens.empty()) {
-            std::string special_tokens_subpattern;
             for (const auto & token : vocab.special_tokens) {
                 if (!special_tokens_subpattern.empty()) {
                     special_tokens_subpattern += "|";
                 }
                 special_tokens_subpattern += token;
+                // fprintf(stderr, "%s: special token '%s'\n", __func__, token.data());
             }
-
-            // Modify the regex pattern with the generated special tokens subpattern
-            pat = special_tokens_subpattern + "|" + pat;
         }
+        fprintf(stderr, "%s: regex '%s'\n", __func__, special_tokens_subpattern.data());
 
-        std::regex re(pat);
-        std::smatch m;
-
-        while (std::regex_search(str, m, re)) {
-            for (auto x : m) {
-                words.push_back(x);
+        std::string str;
+        if (special_tokens_subpattern.empty()) {
+            str = text;
+            while (std::regex_search(str, m, re)) {
+                for (auto x : m) {
+                    words.push_back(x);
+                }
+                str = m.suffix();
             }
-            str = m.suffix();
+        }
+        else {
+            std::regex sm_re(special_tokens_subpattern);
+            std::smatch sm;
+            std::string masked_str = text;
+            while (std::regex_search(masked_str, sm, sm_re)) {
+                for (auto x : sm) {
+                    // fprintf(stderr, "%s: special token '%s', prefix '%s', suffix '%s'\n", __func__, x.str().c_str(), sm.prefix().str().c_str(), sm.suffix().str().c_str());
+                    str = sm.prefix();
+                    while (std::regex_search(str, m, re)) {
+                        for (auto x1 : m) {
+                            words.push_back(x1);
+                        }
+                        str = m.suffix();
+                    }
+                    words.push_back(x);
+                }
+                masked_str = sm.suffix();
+            }
+            str = sm.suffix();
+            while (std::regex_search(str, m, re)) {
+                for (auto x1 : m) {
+                    words.push_back(x1);
+                }
+                str = m.suffix();
+            }
         }
     }
 

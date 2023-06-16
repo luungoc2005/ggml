@@ -10,5 +10,7 @@ compile_commands.json
 .stablelm
 .gpt-2
 
+*.bin
+
 src/arm_neon.h
 tests/arm_neon.h

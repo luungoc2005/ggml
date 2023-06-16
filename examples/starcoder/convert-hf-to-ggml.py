@@ -64,6 +64,10 @@ list_vars = model.state_dict()
 #print (list_vars)
 
 encoder = tokenizer.vocab
+
+print('initial added vocab', tokenizer.get_added_vocab())
+print('vocab size', tokenizer.vocab_size)
+
 # Add added_tokens (special tokens) to the encoder
 encoder.update(tokenizer.get_added_vocab())
 print(hparams)
