@@ -268,6 +268,7 @@ std::vector<gpt_vocab::id> gpt_tokenize(const gpt_vocab & vocab, const std::stri
             std::regex sm_re(special_tokens_subpattern);
             std::smatch sm;
             std::string masked_str = text;
+            int special_token_matches = 0;
             while (std::regex_search(masked_str, sm, sm_re)) {
                 for (auto x : sm) {
                     // fprintf(stderr, "%s: special token '%s', prefix '%s', suffix '%s'\n", __func__, x.str().c_str(), sm.prefix().str().c_str(), sm.suffix().str().c_str());
@@ -281,8 +282,13 @@ std::vector<gpt_vocab::id> gpt_tokenize(const gpt_vocab & vocab, const std::stri
                     words.push_back(x);
                 }
                 masked_str = sm.suffix();
+                special_token_matches += 1;
             }
             str = sm.suffix();
+            fprintf(stderr, "%s: number of special token %d\n", __func__, special_token_matches);
+            if (special_token_matches == 0) {
+                str = text;
+            }
             while (std::regex_search(str, m, re)) {
                 for (auto x1 : m) {
                     words.push_back(x1);
@@ -381,7 +387,7 @@ void test_gpt_tokenizer(gpt_vocab & vocab, const std::string & fpath_test){
 }
 
 bool gpt_vocab_init(const std::string & fname, gpt_vocab & vocab) {
-    printf("%s: loading vocab from '%s'\n", __func__, fname.c_str());
+    fprintf(stderr, "%s: loading vocab from '%s'\n", __func__, fname.c_str());
 
     vocab.token_to_id = ::json_parse(fname);
 
@@ -389,7 +395,7 @@ bool gpt_vocab_init(const std::string & fname, gpt_vocab & vocab) {
         vocab.id_to_token[kv.second] = kv.first;
     }
 
-    printf("%s: vocab size = %d\n", __func__, (int) vocab.token_to_id.size());
+    fprintf(stderr, "%s: vocab size = %d\n", __func__, (int) vocab.token_to_id.size());
 
     // print the vocabulary
     //for (auto kv : vocab.token_to_id) {

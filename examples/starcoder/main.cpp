@@ -70,7 +70,7 @@ struct starcoder_model {
 
 // load the model's weights from a file
 bool starcoder_model_load(const std::string & fname, starcoder_model & model, gpt_vocab & vocab) {
-    printf("%s: loading model from '%s'\n", __func__, fname.c_str());
+    fprintf(stderr, "%s: loading model from '%s'\n", __func__, fname.c_str());
 
     auto fin = std::ifstream(fname, std::ios::binary);
     if (!fin) {
@@ -101,13 +101,13 @@ bool starcoder_model_load(const std::string & fname, starcoder_model & model, gp
 
         const int32_t qntvr = hparams.ftype / GGML_QNT_VERSION_FACTOR;
 
-        printf("%s: n_vocab = %d\n", __func__, hparams.n_vocab);
-        printf("%s: n_ctx   = %d\n", __func__, hparams.n_ctx);
-        printf("%s: n_embd  = %d\n", __func__, hparams.n_embd);
-        printf("%s: n_head  = %d\n", __func__, hparams.n_head);
-        printf("%s: n_layer = %d\n", __func__, hparams.n_layer);
-        printf("%s: ftype   = %d\n", __func__, hparams.ftype);
-        printf("%s: qntvr   = %d\n", __func__, qntvr);
+        fprintf(stderr, "%s: n_vocab = %d\n", __func__, hparams.n_vocab);
+        fprintf(stderr, "%s: n_ctx   = %d\n", __func__, hparams.n_ctx);
+        fprintf(stderr, "%s: n_embd  = %d\n", __func__, hparams.n_embd);
+        fprintf(stderr, "%s: n_head  = %d\n", __func__, hparams.n_head);
+        fprintf(stderr, "%s: n_layer = %d\n", __func__, hparams.n_layer);
+        fprintf(stderr, "%s: ftype   = %d\n", __func__, hparams.ftype);
+        fprintf(stderr, "%s: qntvr   = %d\n", __func__, qntvr);
 
         hparams.ftype %= GGML_QNT_VERSION_FACTOR;
     }
@@ -201,7 +201,7 @@ bool starcoder_model_load(const std::string & fname, starcoder_model & model, gp
 
         ctx_size += (6 + 12*n_layer)*512; // object overhead
 
-        printf("%s: ggml ctx size = %6.2f MB\n", __func__, ctx_size/(1024.0*1024.0));
+        fprintf(stderr, "%s: ggml ctx size = %6.2f MB\n", __func__, ctx_size/(1024.0*1024.0));
     }
 
     // create the ggml context
@@ -307,7 +307,7 @@ bool starcoder_model_load(const std::string & fname, starcoder_model & model, gp
 
         const size_t memory_size = ggml_nbytes(model.memory_k) + ggml_nbytes(model.memory_v);
 
-        printf("%s: memory size = %8.2f MB, n_mem = %d\n", __func__, memory_size/1024.0/1024.0, n_mem);
+        fprintf(stderr, "%s: memory size = %8.2f MB, n_mem = %d\n", __func__, memory_size/1024.0/1024.0, n_mem);
     }
 
     // load weights
@@ -358,7 +358,7 @@ bool starcoder_model_load(const std::string & fname, starcoder_model & model, gp
 
             // for debugging
             if (0) {
-                printf("%24s - [%5d, %5d], type = %6s, %6.2f MB, %9zu bytes\n", name.data(), ne[0], ne[1], ggml_type_name(ggml_type(ttype)), ggml_nbytes(tensor)/1024.0/1024.0, ggml_nbytes(tensor));
+                fprintf(stderr, "%24s - [%5d, %5d], type = %6s, %6.2f MB, %9zu bytes\n", name.data(), ne[0], ne[1], ggml_type_name(ggml_type(ttype)), ggml_nbytes(tensor)/1024.0/1024.0, ggml_nbytes(tensor));
             }
 
             const size_t bpe = ggml_type_size(ggml_type(ttype));
@@ -383,7 +383,7 @@ bool starcoder_model_load(const std::string & fname, starcoder_model & model, gp
             total_size += ggml_nbytes(tensor);
         }
 
-        printf("%s: model size  = %8.2f MB\n", __func__, total_size/1024.0/1024.0);
+        fprintf(stderr, "%s: model size  = %8.2f MB\n", __func__, total_size/1024.0/1024.0);
     }
 
     fin.close();
@@ -741,7 +741,7 @@ int main(int argc, char ** argv) {
         params.seed = time(NULL);
     }
 
-    printf("%s: seed = %d\n", __func__, params.seed);
+    fprintf(stderr, "%s: seed = %d\n", __func__, params.seed);
 
     std::mt19937 rng(params.seed);
     if (params.prompt.empty()) {
@@ -779,12 +779,12 @@ int main(int argc, char ** argv) {
 
     params.n_predict = std::min(params.n_predict, model.hparams.n_ctx - (int) embd_inp.size());
 
-    printf("%s: prompt: '%s'\n", __func__, params.prompt.c_str());
-    printf("%s: number of tokens in prompt = %zu\n", __func__, embd_inp.size());
+    fprintf(stderr, "%s: prompt: '%s'\n", __func__, params.prompt.c_str());
+    fprintf(stderr, "%s: number of tokens in prompt = %zu\n", __func__, embd_inp.size());
     for (int i = 0; i < embd_inp.size(); i++) {
-        printf("%s: token[%d] = %6d, %s\n", __func__, i, embd_inp[i], vocab.id_to_token.at(embd_inp[i]).c_str());
+        fprintf(stderr, "%s: token[%d] = %6d, %s\n", __func__, i, embd_inp[i], vocab.id_to_token.at(embd_inp[i]).c_str());
     }
-    printf("\n\n");
+    fprintf(stderr, "\n\n");
 
     // submit the input prompt token-by-token
     // this reduces the memory usage during inference, at the cost of a bit of speed at the beginning
@@ -800,7 +800,7 @@ int main(int argc, char ** argv) {
             const int64_t t_start_us = ggml_time_us();
 
             if (!starcoder_eval(model, params.n_threads, n_past, embd, logits, mem_per_token)) {
-                printf("Failed to predict\n");
+                fprintf(stderr, "Failed to predict\n");
                 return 1;
             }
 
@@ -861,12 +861,12 @@ int main(int argc, char ** argv) {
     {
         const int64_t t_main_end_us = ggml_time_us();
 
-        printf("\n\n");
-        printf("%s: mem per token = %8zu bytes\n", __func__, mem_per_token);
-        printf("%s:     load time = %8.2f ms\n", __func__, t_load_us/1000.0f);
-        printf("%s:   sample time = %8.2f ms\n", __func__, t_sample_us/1000.0f);
-        printf("%s:  predict time = %8.2f ms / %.2f ms per token\n", __func__, t_predict_us/1000.0f, t_predict_us/1000.0f/n_past);
-        printf("%s:    total time = %8.2f ms\n", __func__, (t_main_end_us - t_main_start_us)/1000.0f);
+        fprintf(stderr, "\n\n");
+        fprintf(stderr, "%s: mem per token = %8zu bytes\n", __func__, mem_per_token);
+        fprintf(stderr, "%s:     load time = %8.2f ms\n", __func__, t_load_us/1000.0f);
+        fprintf(stderr, "%s:   sample time = %8.2f ms\n", __func__, t_sample_us/1000.0f);
+        fprintf(stderr, "%s:  predict time = %8.2f ms / %.2f ms per token\n", __func__, t_predict_us/1000.0f, t_predict_us/1000.0f/n_past);
+        fprintf(stderr, "%s:    total time = %8.2f ms\n", __func__, (t_main_end_us - t_main_start_us)/1000.0f);
     }
 
     ggml_free(model.ctx);
