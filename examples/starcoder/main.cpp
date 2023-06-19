@@ -789,6 +789,7 @@ int main(int argc, char ** argv) {
     // submit the input prompt token-by-token
     // this reduces the memory usage during inference, at the cost of a bit of speed at the beginning
     std::vector<gpt_vocab::id> embd;
+    std::vector<gpt_vocab::id> output_tokens;
 
     // determine the required inference memory per token:
     size_t mem_per_token = 0;
@@ -830,6 +831,7 @@ int main(int argc, char ** argv) {
 
             // add it to the context
             embd.push_back(id);
+            output_tokens.push_back(id);
         } else {
             // if here, it means we are still processing the input prompt
             for (int k = i; k < embd_inp.size(); k++) {
@@ -841,12 +843,6 @@ int main(int argc, char ** argv) {
             i += embd.size() - 1;
         }
 
-        // display text
-        for (auto id : embd) {
-            printf("%s", vocab.id_to_token[id].c_str());
-        }
-        fflush(stdout);
-
         // check if model is santacoder
         if (model.hparams.n_layer <= 30 && embd.back() == 49152) {
             break;
@@ -856,6 +852,12 @@ int main(int argc, char ** argv) {
             break;
         }
     }
+
+    // display text
+    for (auto id : output_tokens) {
+        printf("%s", vocab.id_to_token[id].c_str());
+    }
+    fflush(stdout);
 
     // report timing
     {
