@@ -12,6 +12,10 @@
 #include <string>
 #include <vector>
 
+#if defined(_MSC_VER)
+#pragma warning(disable: 4244 4267) // possible loss of data
+#endif
+
 // default hparams (GPT-2 117M)
 // https://huggingface.co/bigcode/gpt_bigcode-santacoder/blob/main/config.json
 struct starcoder_hparams {
@@ -82,7 +86,7 @@ bool starcoder_model_load(const std::string & fname, starcoder_model & model, gp
     {
         uint32_t magic;
         fin.read((char *) &magic, sizeof(magic));
-        if (magic != 0x67676d6c) {
+        if (magic != GGML_FILE_MAGIC) {
             fprintf(stderr, "%s: invalid model file '%s' (bad magic)\n", __func__, fname.c_str());
             return false;
         }
@@ -767,6 +771,16 @@ int main(int argc, char ** argv) {
         test_gpt_tokenizer(vocab, params.token_test);
     }
 
+    if (params.repeat_last_n == -1) {
+        params.repeat_last_n = model.hparams.n_ctx;
+    }
+    printf("\n");
+    printf("%s: temp           = %.3f\n", __func__, params.temp);
+    printf("%s: top_k          = %d\n",   __func__, params.top_k);
+    printf("%s: top_p          = %.3f\n", __func__, params.top_p);
+    printf("%s: repeat_last_n  = %d\n",   __func__, params.repeat_last_n);
+    printf("%s: repeat_penalty = %.3f\n", __func__, params.repeat_penalty);
+    
     int n_past = 0;
 
     int64_t t_sample_us  = 0;
@@ -774,6 +788,9 @@ int main(int argc, char ** argv) {
 
     std::vector<float> logits;
 
+    std::vector<int32_t> last_n_tokens(model.hparams.n_ctx);
+    std::fill(last_n_tokens.begin(), last_n_tokens.end(), 0);
+    
     // tokenize the prompt
     std::vector<gpt_vocab::id> embd_inp = ::gpt_tokenize(vocab, params.prompt);
 
@@ -833,8 +850,7 @@ int main(int argc, char ** argv) {
             {
                 const int64_t t_start_sample_us = ggml_time_us();
 
-                id = gpt_sample_top_k_top_p(vocab, logits.data() + (logits.size() - n_vocab), top_k, top_p, temp, rng);
-
+                id = gpt_sample_top_k_top_p_repeat(vocab, logits.data() + (logits.size() - n_vocab), last_n_tokens.data(), last_n_tokens.size(), top_k, top_p, temp, params.repeat_last_n, params.repeat_penalty, rng);
                 t_sample_us += ggml_time_us() - t_start_sample_us;
             }
 
@@ -845,6 +861,10 @@ int main(int argc, char ** argv) {
             // if here, it means we are still processing the input prompt
             for (int k = i; k < embd_inp.size(); k++) {
                 embd.push_back(embd_inp[k]);
+
+                last_n_tokens.erase(last_n_tokens.begin());
+                last_n_tokens.push_back(embd_inp[k]); 
+
                 if (embd.size() >= params.n_batch) {
                     break;
                 }

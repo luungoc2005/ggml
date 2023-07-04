@@ -1,5 +1,5 @@
 #include "whisper.h"
-#if WHISPER_USE_COREML
+#ifdef WHISPER_USE_COREML
 #include "coreml/whisper-encoder.h"
 #endif
 
@@ -18,6 +18,10 @@
 #include <vector>
 #include <regex>
 #include <random>
+
+#if defined(_MSC_VER)
+#pragma warning(disable: 4244 4267) // possible loss of data
+#endif
 
 #if defined(GGML_BIG_ENDIAN)
 #include <bit>
@@ -808,7 +812,7 @@ static bool whisper_model_load(struct whisper_model_loader * loader, whisper_con
     {
         uint32_t magic;
         read_safe(loader, magic);
-        if (magic != 0x67676d6c) {
+        if (magic != GGML_FILE_MAGIC) {
             fprintf(stderr, "%s: invalid model data (bad magic)\n", __func__);
             return false;
         }
@@ -1468,7 +1472,7 @@ static bool whisper_encode_internal(
         {
             wstate.use_buf(ctx0, 1);
 
-            cur = ggml_conv_1d_s1_ph(ctx0, model.e_conv_1_w, mel);
+            cur = ggml_conv_1d_ph(ctx0, model.e_conv_1_w, mel, 1, 1);
             cur = ggml_add(ctx0,
                     ggml_repeat(ctx0,
                         model.e_conv_1_b,
@@ -1479,7 +1483,7 @@ static bool whisper_encode_internal(
 
             wstate.use_buf(ctx0, 0);
 
-            cur = ggml_conv_1d_s2_ph(ctx0, model.e_conv_2_w, cur);
+            cur = ggml_conv_1d_ph(ctx0, model.e_conv_2_w, cur, 2, 1);
             cur = ggml_add(ctx0,
                     ggml_repeat(ctx0,
                         model.e_conv_2_b,
@@ -2852,6 +2856,12 @@ void whisper_free(struct whisper_context * ctx) {
     }
 }
 
+void whisper_free_params(struct whisper_full_params * params) {
+    if (params) {
+        delete params;
+    }
+}
+
 int whisper_pcm_to_mel_with_state(struct whisper_context * ctx, struct whisper_state * state, const float * samples, int n_samples, int n_threads) {
     if (!log_mel_spectrogram(*state, samples, n_samples, WHISPER_SAMPLE_RATE, WHISPER_N_FFT, WHISPER_HOP_LENGTH, WHISPER_N_MEL, n_threads, ctx->model.filters, false, state->mel)) {
         fprintf(stderr, "%s: failed to compute mel spectrogram\n", __func__);
@@ -3284,6 +3294,14 @@ const char * whisper_print_system_info(void) {
 }
 
 ////////////////////////////////////////////////////////////////////////////
+
+struct whisper_full_params * whisper_full_default_params_by_ref(enum whisper_sampling_strategy strategy) {
+    struct whisper_full_params params = whisper_full_default_params(strategy);
+
+    struct whisper_full_params* result = new whisper_full_params();
+    *result = params;
+    return result;
+}
 
 struct whisper_full_params whisper_full_default_params(enum whisper_sampling_strategy strategy) {
     struct whisper_full_params result = {

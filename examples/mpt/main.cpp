@@ -14,6 +14,10 @@
 #include <utility>
 #include <vector>
 
+#if defined(_MSC_VER)
+#pragma warning(disable: 4244 4267) // possible loss of data
+#endif
+
 // no defaults for now
 struct mpt_hparams {
     int32_t d_model      = 0;
@@ -184,7 +188,7 @@ bool mpt_model_load(const std::string & fname, mpt_model & model, gpt_vocab & vo
     {
         uint32_t magic;
         fin.read((char *)&magic, sizeof(magic));
-        if (magic != 0x67676d6c) {
+        if (magic != GGML_FILE_MAGIC) {
             fprintf(stderr, "%s: invalid model file '%s' (bad magic)\n", __func__, fname.c_str());
             return false;
         }
@@ -932,7 +936,7 @@ int main(int argc, char ** argv) {
     printf("%s: number of tokens in prompt = %zu\n", __func__, embd_inp.size());
 
     for (size_t i = 0; i < embd_inp.size(); i++) {
-        printf("%s: token[%lu] = %6d\n", __func__, i, embd_inp[i]);
+        printf("%s: token[%zu] = %6d\n", __func__, i, embd_inp[i]);
     }
     printf("\n");
 

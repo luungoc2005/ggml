@@ -17,6 +17,10 @@
 #define M_PI 3.14159265358979323846
 #endif
 
+#if defined(_MSC_VER)
+#pragma warning(disable: 4244 4267) // possible loss of data
+#endif
+
 bool gpt_params_parse(int argc, char ** argv, gpt_params & params) {
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
@@ -35,10 +39,19 @@ bool gpt_params_parse(int argc, char ** argv, gpt_params & params) {
             params.top_p = std::stof(argv[++i]);
         } else if (arg == "--temp") {
             params.temp = std::stof(argv[++i]);
+        } else if (arg == "--repeat-last-n") {
+            params.repeat_last_n = std::stof(argv[++i]);
+        } else if (arg == "--repeat-penalty") {
+            params.repeat_penalty = std::stof(argv[++i]);
         } else if (arg == "-b" || arg == "--batch_size") {
             params.n_batch = std::stoi(argv[++i]);
         } else if (arg == "-m" || arg == "--model") {
             params.model = argv[++i];
+        } else if (arg == "-i" || arg == "--interactive") {
+            params.interactive = true;
+        } else if (arg == "-ip" || arg == "--interactive-port") {
+            params.interactive = true;
+            params.interactive_port = std::stoi(argv[++i]);
         } else if (arg == "-h" || arg == "--help") {
             gpt_print_usage(argc, argv, params);
             exit(0);
@@ -86,6 +99,8 @@ void gpt_print_usage(int /*argc*/, char ** argv, const gpt_params & params) {
     fprintf(stderr, "  --top_k N             top-k sampling (default: %d)\n", params.top_k);
     fprintf(stderr, "  --top_p N             top-p sampling (default: %.1f)\n", params.top_p);
     fprintf(stderr, "  --temp N              temperature (default: %.1f)\n", params.temp);
+    fprintf(stderr, "  --repeat-last-n N     last n tokens to consider for penalize (default: %d, 0 = disabled)\n", params.repeat_last_n);
+    fprintf(stderr, "  --repeat-penalty N    penalize repeat sequence of tokens (default: %.2f, 1.0 = disabled)\n", (double)params.repeat_penalty);
     fprintf(stderr, "  -b N, --batch_size N  batch size for prompt processing (default: %d)\n", params.n_batch);
     fprintf(stderr, "  -m FNAME, --model FNAME\n");
     fprintf(stderr, "                        model path (default: %s)\n", params.model.c_str());
@@ -314,7 +329,7 @@ std::vector<gpt_vocab::id> gpt_tokenize(const gpt_vocab & vocab, const std::stri
     // find the longest token that forms each word in words:
     std::vector<gpt_vocab::id> tokens;
     for (const auto & word : words) {
-        for (int i = 0; i < word.size(); ){
+        for (int i = 0; i < (int) word.size(); ){
             for (int j = word.size() - 1; j >= i; j--){
                 auto cand = word.substr(i, j-i+1);
                 auto it = vocab.token_to_id.find(cand);
@@ -330,7 +345,6 @@ std::vector<gpt_vocab::id> gpt_tokenize(const gpt_vocab & vocab, const std::stri
             }
         }
     }
-
 
     return tokens;
 }
@@ -396,7 +410,7 @@ void test_gpt_tokenizer(gpt_vocab & vocab, const std::string & fpath_test){
         }
     }
 
-    fprintf(stderr, "%s : %lu tests failed out of %lu tests.\n", __func__, n_fails, tests.size());
+    fprintf(stderr, "%s : %zu tests failed out of %zu tests.\n", __func__, n_fails, tests.size());
 }
 
 bool gpt_vocab_init(const std::string & fname, gpt_vocab & vocab) {
