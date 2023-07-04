@@ -774,12 +774,12 @@ int main(int argc, char ** argv) {
     if (params.repeat_last_n == -1) {
         params.repeat_last_n = model.hparams.n_ctx;
     }
-    printf("\n");
-    printf("%s: temp           = %.3f\n", __func__, params.temp);
-    printf("%s: top_k          = %d\n",   __func__, params.top_k);
-    printf("%s: top_p          = %.3f\n", __func__, params.top_p);
-    printf("%s: repeat_last_n  = %d\n",   __func__, params.repeat_last_n);
-    printf("%s: repeat_penalty = %.3f\n", __func__, params.repeat_penalty);
+    fprintf(stderr, "\n");
+    fprintf(stderr, "%s: temp           = %.3f\n", __func__, params.temp);
+    fprintf(stderr, "%s: top_k          = %d\n",   __func__, params.top_k);
+    fprintf(stderr, "%s: top_p          = %.3f\n", __func__, params.top_p);
+    fprintf(stderr, "%s: repeat_last_n  = %d\n",   __func__, params.repeat_last_n);
+    fprintf(stderr, "%s: repeat_penalty = %.3f\n", __func__, params.repeat_penalty);
     
     int n_past = 0;
 
